@@ -4,74 +4,118 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SHE Tron</title>
+
   <style>
     html, body {
-      margin: 0; padding: 0;
-      width: 100%; height: 100%;
+      margin: 0;
+      width: 100%;
+      height: 100%;
       background: #000;
       overflow: hidden;
     }
-    #player {
+
+    /* The stage is always the exact page size */
+    #stage {
       position: fixed;
-      left: 0; top: 0;
+      inset: 0;
       width: 100vw;
       height: 100vh;
-      border: 0;
-      display: block;
       background: #000;
+      overflow: hidden;
     }
-    /* optional idle image */
-    #idle {
-      position: fixed;
-      left: 0; top: 0;
+
+    /*
+      The iframe is intentionally oversized and centered.
+      We then use transforms to achieve contain/cover/stretch without bars.
+    */
+    #yt {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+
+      /* Base: 16:9 box (YouTube's native shape) */
       width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      display: none;
+      height: calc(100vw * 9 / 16);
+
+      transform: translate(-50%, -50%);
+      border: 0;
+      background: #000;
+      display: block;
+    }
+
+    /* If viewport is wider than 16:9, height becomes limiting */
+    @media (min-aspect-ratio: 16/9) {
+      #yt {
+        width: calc(100vh * 16 / 9);
+        height: 100vh;
+      }
+    }
+
+    /* Modes */
+    body.mode-cover #yt {
+      /* Make it fill the viewport: no bars, crop if needed */
+      /* We scale the 16:9 box until it covers both axes */
+      /* The media queries already fit one axis; cover means scale up to cover both */
+      transform: translate(-50%, -50%) scale(1.12);
+    }
+
+    body.mode-contain #yt {
+      /* Preserve everything; if aspect mismatches, you get bars */
+      transform: translate(-50%, -50%) scale(1.0);
+    }
+
+    body.mode-stretch #yt {
+      /* Stretch to exact viewport (distorts) */
+      width: 100vw !important;
+      height: 100vh !important;
+      transform: translate(-50%, -50%);
     }
   </style>
 </head>
-<body>
-  <img id="idle" alt="">
-  <iframe id="player"
-    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-    allowfullscreen
-    referrerpolicy="origin"
-  ></iframe>
+
+<body class="mode-cover">
+  <div id="stage">
+    <iframe
+      id="yt"
+      allow="autoplay; encrypted-media; picture-in-picture"
+      allowfullscreen
+      referrerpolicy="origin"
+      src=""
+    ></iframe>
+  </div>
 
   <script>
+    // --- Query helpers ---
     const qs = new URLSearchParams(location.search);
-    const vid  = (qs.get("v") || "").trim();
-    const idle = (qs.get("idle") || "").trim();
 
-    const iframe = document.getElementById("player");
-    const idleImg = document.getElementById("idle");
+    // v=VIDEOID
+    const vid = (qs.get("v") || "").trim();
 
+    // mode=cover|contain|stretch  (default cover)
+    const mode = (qs.get("mode") || "cover").toLowerCase();
+    document.body.classList.remove("mode-cover","mode-contain","mode-stretch");
+    document.body.classList.add("mode-" + (["cover","contain","stretch"].includes(mode) ? mode : "cover"));
+
+    // idle page support: if no v param, show a black screen (no bars)
     if (!vid) {
-      // idle mode (optional)
-      if (idle) {
-        idleImg.src = idle;
-        idleImg.style.display = "block";
-      }
-      // blank iframe (kept for consistency)
-      iframe.src = "about:blank";
+      // keep empty black stage
+      // (this prevents “white screen” on stop)
     } else {
-      // Force the embedded player to fill the surface
-      // and request higher quality when available.
+      // YouTube embed with minimal UI
+      // IMPORTANT: playsinline=1 + autoplay=1
+      // controls=0 helps prevent "reserved UI" space
       const src =
-        "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(vid) +
+        "https://www.youtube.com/embed/" + encodeURIComponent(vid) +
         "?autoplay=1" +
-        "&mute=0" +
+        "&playsinline=1" +
         "&controls=0" +
         "&rel=0" +
         "&modestbranding=1" +
-        "&playsinline=1" +
         "&iv_load_policy=3" +
-        "&cc_load_policy=0" +      // try to prevent forced captions
-        "&vq=hd1080" +             // request HD
-        "&enablejsapi=0";
+        "&fs=0" +
+        "&mute=0";
 
-      iframe.src = src;
+      document.getElementById("yt").src = src;
     }
   </script>
 </body>
