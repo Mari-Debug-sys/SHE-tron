@@ -5,132 +5,84 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SHE Tron</title>
   <style>
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-    }
-
-    /* Whole prim face area */
-    #frame {
-      position: absolute;
-      inset: 0;
-      background: #000;
-    }
-
-    /* 16:9 stage inside the prim face (will letterbox if face isn't 16:9) */
-    #stage {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: min(100vw, calc(100vh * (16 / 9)));
-      height: min(100vh, calc(100vw * (9 / 16)));
-      transform: translate(-50%, -50%);
-      background: #000;
-    }
-
-    /* Player container */
-    #playerWrap {
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-    }
-
-    /* Idle image overlay (always present; hidden only when video starts) */
-    #idle {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      display: grid;
-      place-items: center;
-      background: #000;
-    }
-
-    #idle img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain; /* shows full idle graphic, no cropping */
-      image-rendering: auto;
-    }
+    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
+    #frame { position:absolute; inset:0; background:#000; }
+    /* Keep it simple: fill the prim face. No extra letterbox logic here. */
+    #idle { position:absolute; inset:0; background:#000; display:grid; place-items:center; }
+    #idle img { width:100%; height:100%; object-fit:contain; } /* full image, no cropping */
+    #playerWrap { position:absolute; inset:0; }
   </style>
 </head>
 <body>
   <div id="frame">
-    <div id="stage">
-      <div id="playerWrap"></div>
-      <div id="idle">
-        <!-- CHANGE THIS filename if yours differs -->
-        <img src="idle.png" alt="SHE Idle" />
-      </div>
-    </div>
+    <div id="playerWrap"></div>
+    <div id="idle"><img id="idleImg" alt="SHE Idle"></div>
   </div>
 
   <script>
-    function qp(name) {
+    function qp(name){
       const u = new URL(window.location.href);
       return u.searchParams.get(name) || "";
     }
 
-    function extractId(input) {
-      if (!input) return "";
+    function extractId(input){
+      if(!input) return "";
       let s = String(input).trim();
-
-      // Already looks like an ID
-      if (/^[a-zA-Z0-9_-]{6,}$/.test(s) && !s.includes("http") && !s.includes("youtu")) return s;
-
-      let m = s.match(/[?&]v=([^&]+)/);
-      if (m && m[1]) return m[1];
-
-      m = s.match(/youtu\.be\/([^?&]+)/);
-      if (m && m[1]) return m[1];
-
-      m = s.match(/youtube\.com\/embed\/([^?&]+)/);
-      if (m && m[1]) return m[1];
-
+      let m = s.match(/[?&]v=([^&]+)/); if (m && m[1]) return m[1];
+      m = s.match(/youtu\.be\/([^?&]+)/); if (m && m[1]) return m[1];
+      m = s.match(/youtube\.com\/embed\/([^?&]+)/); if (m && m[1]) return m[1];
       return s;
     }
 
+    // ---- CONFIG (EDIT THESE) ----
+    const IDLE_FILE_PNG = "idle.png"; // <-- put YOUR real file here
+    const IDLE_FILE_JPG = "idle.jpg"; // optional fallback
+    // -----------------------------
+
+    const idleParam = qp("idle");                 // your LSL adds this on stop
+    const cacheBust = idleParam || Date.now();    // fallback if someone opens without ?idle=
+    const idleImg = document.getElementById("idleImg");
+
+    function setIdleSrc(file){
+      // absolute path avoids any base/path weirdness
+      idleImg.src = `${location.origin}${location.pathname.replace(/[^\/]*$/, "")}${file}?cb=${cacheBust}`;
+    }
+
+    // Try PNG, then JPG if PNG fails
+    idleImg.onerror = function(){
+      if (IDLE_FILE_JPG && !idleImg.src.includes(IDLE_FILE_JPG)) setIdleSrc(IDLE_FILE_JPG);
+    };
+    setIdleSrc(IDLE_FILE_PNG);
+
     const raw = qp("v");
-    const id = extractId(raw);
+    const id  = extractId(raw);
 
-    const idle = document.getElementById("idle");
-
-    // If no video id, we stay idle and DO NOT load YouTube at all.
-    if (!id) {
-      idle.style.display = "grid";
+    // If there's no video id, stay idle and stop here.
+    if(!id) {
+      // idle is visible by default
     } else {
-      // Hide idle once we intend to play
-      idle.style.display = "none";
+      // hide idle when playing video
+      document.getElementById("idle").style.display = "none";
 
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
       document.head.appendChild(tag);
 
-      window.onYouTubeIframeAPIReady = function() {
+      window.onYouTubeIframeAPIReady = function(){
         new YT.Player("playerWrap", {
           videoId: id,
           playerVars: {
-            autoplay: 1,
-            controls: 0,
-            rel: 0,
-            modestbranding: 1,
-            playsinline: 1,
-            cc_load_policy: 0,
-            iv_load_policy: 3,
-            fs: 0,
-            disablekb: 1,
-            origin: window.location.origin
+            autoplay: 1, controls: 0, rel: 0, modestbranding: 1,
+            playsinline: 1, iv_load_policy: 3, fs: 0, disablekb: 1
           },
           events: {
-            onReady: function(e) {
+            onReady: function(e){
               try {
                 e.target.setPlaybackQuality("hd1080");
                 e.target.playVideo();
                 e.target.unMute();
                 e.target.setVolume(100);
-              } catch (_) {}
+              } catch(_) {}
             }
           }
         });
