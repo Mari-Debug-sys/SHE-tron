@@ -6,11 +6,36 @@
   <title>SHE Tron</title>
   <style>
     html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
+
     #frame { position:absolute; inset:0; background:#000; }
-    /* Keep it simple: fill the prim face. No extra letterbox logic here. */
-    #idle { position:absolute; inset:0; background:#000; display:grid; place-items:center; }
-    #idle img { width:100%; height:100%; object-fit:contain; } /* full image, no cropping */
-    #playerWrap { position:absolute; inset:0; }
+
+    /* IDLE LAYER */
+    #idle {
+      position:absolute;
+      inset:0;
+      background:#000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    /* This is the key difference:
+       - We DO NOT force width/height 100%.
+       - We cap the image to the viewport and center it.
+    */
+    #idle img{
+      display:block;
+      max-width:100%;
+      max-height:100%;
+      width:auto;
+      height:auto;
+      object-fit:contain;
+      transform: translateY(var(--idleShift, 0vh));
+    }
+
+    /* PLAYER LAYER */
+    #playerWrap { position:absolute; inset:0; background:#000; }
   </style>
 </head>
 <body>
@@ -35,20 +60,29 @@
     }
 
     // ---- CONFIG (EDIT THESE) ----
-    const IDLE_FILE_PNG = "idle.png"; // <-- put YOUR real file here
+    const IDLE_FILE_PNG = "idle.png"; // <-- set to your real filename
     const IDLE_FILE_JPG = "idle.jpg"; // optional fallback
     // -----------------------------
 
-    const idleParam = qp("idle");                 // your LSL adds this on stop
-    const cacheBust = idleParam || Date.now();    // fallback if someone opens without ?idle=
+    const idleParam = qp("idle");
+    const cacheBust = idleParam || Date.now();
+
+    // Optional Y shift for the idle graphic (in vh)
+    // Use y=-6 to lift it up a bit, y=0 default centered, y=6 push down
+    const y = parseFloat(qp("y") || "0");
+    document.documentElement.style.setProperty("--idleShift", `${y}vh`);
+
     const idleImg = document.getElementById("idleImg");
 
-    function setIdleSrc(file){
-      // absolute path avoids any base/path weirdness
-      idleImg.src = `${location.origin}${location.pathname.replace(/[^\/]*$/, "")}${file}?cb=${cacheBust}`;
+    function baseDir(){
+      // folder of current file
+      return location.origin + location.pathname.replace(/[^\/]*$/, "");
     }
 
-    // Try PNG, then JPG if PNG fails
+    function setIdleSrc(file){
+      idleImg.src = `${baseDir()}${file}?cb=${cacheBust}`;
+    }
+
     idleImg.onerror = function(){
       if (IDLE_FILE_JPG && !idleImg.src.includes(IDLE_FILE_JPG)) setIdleSrc(IDLE_FILE_JPG);
     };
@@ -57,11 +91,10 @@
     const raw = qp("v");
     const id  = extractId(raw);
 
-    // If there's no video id, stay idle and stop here.
     if(!id) {
-      // idle is visible by default
+      // stay idle
+      document.getElementById("idle").style.display = "flex";
     } else {
-      // hide idle when playing video
       document.getElementById("idle").style.display = "none";
 
       const tag = document.createElement("script");
