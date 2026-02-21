@@ -1,101 +1,53 @@
 <!doctype html>
-<html>
-<head>
+<html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
-
 <style>
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  overflow: hidden;
+html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+#idle{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;background:#000}
+#stage{position:absolute;inset:0;display:none;background:#000}
+#player{
+  position:absolute;
+  left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  width:100%;
+  height:100%;
+  border:0;
 }
-
-#wrap {
-  position: absolute;
-  inset: 0;
-  background: #000;
-}
-
-#idle {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: none;
-}
-
-#bg {
-  position: absolute;
-  inset: -6%;
-  width: 112%;
-  height: 112%;
-  border: 0;
-  filter: blur(22px) brightness(0.65) saturate(1.15);
-  transform: scale(1.08);
-  display: none;
-}
-
-#fg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: none;
-}
-</style>
-</head>
-
+</style></head>
 <body>
-<div id="wrap">
-  <img id="idle" alt="idle">
-  <iframe id="bg" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-  <iframe id="fg" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+<img id="idle" alt="idle">
+<div id="stage">
+  <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
 </div>
 
 <script>
-const qs = new URLSearchParams(location.search);
-const id = qs.get("v");
-const origin = location.origin;
-const idleSrc = origin + "/SHE-tron/idle.png";
+const qs=new URLSearchParams(location.search);
+const v=qs.get("v");
+const origin=location.origin;
+const idleSrc=origin+"/SHE-tron/idle.png";
 
-const idle = document.getElementById("idle");
-const bg   = document.getElementById("bg");
-const fg   = document.getElementById("fg");
+const idle=document.getElementById("idle");
+const stage=document.getElementById("stage");
+const f=document.getElementById("player");
 
 function showIdle(){
-  bg.src = ""; fg.src = "";
-  bg.style.display = "none";
-  fg.style.display = "none";
-  idle.style.display = "block";
-  idle.src = idleSrc;
+  f.src="";
+  stage.style.display="none";
+  idle.style.display="block";
+  idle.src=idleSrc;
 }
 
-function showVideo(videoId){
-  idle.style.display = "none";
-  bg.style.display = "block";
-  fg.style.display = "block";
-
-  // both muted on the monitor
-  bg.src =
-    "https://www.youtube-nocookie.com/embed/" + videoId +
-    "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1" +
-    "&iv_load_policy=3&modestbranding=1&loop=1&playlist=" + videoId +
-    "&vq=hd720&origin=" + encodeURIComponent(origin);
-
-  fg.src =
-    "https://www.youtube-nocookie.com/embed/" + videoId +
-    "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1" +
-    "&iv_load_policy=3&modestbranding=1&loop=1&playlist=" + videoId +
-    "&vq=hd720&origin=" + encodeURIComponent(origin);
+function showVideo(id){
+  idle.style.display="none";
+  stage.style.display="block";
+  f.src="https://www.youtube-nocookie.com/embed/"+id+
+    "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1"+
+    "&iv_load_policy=3&modestbranding=1"+
+    "&loop=1&playlist="+id+
+    "&vq=hd720&origin="+encodeURIComponent(origin);
 }
 
-if(!id) showIdle();
-else showVideo(id);
+if(!v) showIdle(); else showVideo(v);
 </script>
-</body>
-</html>
+</body></html>
