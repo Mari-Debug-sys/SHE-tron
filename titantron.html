@@ -7,23 +7,20 @@
   <style>
     html, body {
       margin: 0;
-      padding: 0;
       width: 100%;
       height: 100%;
       background: #000;
       overflow: hidden;
     }
 
-    /* This is the “screen area” the player fills. */
+    /* Whole prim face area */
     #frame {
       position: absolute;
       inset: 0;
       background: #000;
     }
 
-    /* Keep a strict 16:9 player area centered inside the viewport (contain).
-       If the prim face isn't 16:9, THIS will letterbox (bars). That's expected.
-       To remove bars without cropping, your PRIM FACE must be 16:9. */
+    /* 16:9 stage inside the prim face (will letterbox if face isn't 16:9) */
     #stage {
       position: absolute;
       left: 50%;
@@ -34,31 +31,39 @@
       background: #000;
     }
 
-    #player, iframe {
+    /* Player container */
+    #playerWrap {
       position: absolute;
       inset: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
+      z-index: 1;
     }
 
-    /* Optional idle overlay if no video */
+    /* Idle image overlay (always present; hidden only when video starts) */
     #idle {
       position: absolute;
       inset: 0;
-      display: none;
+      z-index: 2;
+      display: grid;
       place-items: center;
-      color: #aaa;
-      font: 20px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      letter-spacing: 0.04em;
+      background: #000;
+    }
+
+    #idle img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain; /* shows full idle graphic, no cropping */
+      image-rendering: auto;
     }
   </style>
 </head>
 <body>
   <div id="frame">
     <div id="stage">
-      <div id="player"></div>
-      <div id="idle">SHE TRON • IDLE</div>
+      <div id="playerWrap"></div>
+      <div id="idle">
+        <!-- CHANGE THIS filename if yours differs -->
+        <img src="idle.png" alt="SHE Idle" />
+      </div>
     </div>
   </div>
 
@@ -68,26 +73,19 @@
       return u.searchParams.get(name) || "";
     }
 
-    // Accept either:
-    //  - ?v=VIDEOID
-    //  - full YouTube URL
-    //  - youtu.be/VIDEOID
     function extractId(input) {
       if (!input) return "";
       let s = String(input).trim();
 
-      // already looks like an ID
+      // Already looks like an ID
       if (/^[a-zA-Z0-9_-]{6,}$/.test(s) && !s.includes("http") && !s.includes("youtu")) return s;
 
-      // v=...
       let m = s.match(/[?&]v=([^&]+)/);
       if (m && m[1]) return m[1];
 
-      // youtu.be/...
       m = s.match(/youtu\.be\/([^?&]+)/);
       if (m && m[1]) return m[1];
 
-      // embed/...
       m = s.match(/youtube\.com\/embed\/([^?&]+)/);
       if (m && m[1]) return m[1];
 
@@ -98,55 +96,46 @@
     const id = extractId(raw);
 
     const idle = document.getElementById("idle");
+
+    // If no video id, we stay idle and DO NOT load YouTube at all.
     if (!id) {
       idle.style.display = "grid";
-    }
+    } else {
+      // Hide idle once we intend to play
+      idle.style.display = "none";
 
-    // Load YT Iframe API
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
 
-    let player = null;
-
-    window.onYouTubeIframeAPIReady = function() {
-      if (!id) return;
-
-      player = new YT.Player("player", {
-        videoId: id,
-        playerVars: {
-          autoplay: 1,
-          controls: 0,
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 1,
-
-          // Kill captions + “annotations”/overlay junk
-          cc_load_policy: 0,
-          iv_load_policy: 3,
-
-          // Helpful for embedded contexts
-          fs: 0,
-          disablekb: 1,
-
-          // This can help some embeds start faster
-          origin: window.location.origin
-        },
-        events: {
-          onReady: function(e) {
-            try {
-              // Try to push higher quality. (YouTube may still decide.)
-              e.target.setPlaybackQuality("hd1080");
-              e.target.playVideo();
-
-              // Try to keep audio on without requiring a click (viewer-dependent).
-              e.target.unMute();
-              e.target.setVolume(100);
-            } catch (_) {}
+      window.onYouTubeIframeAPIReady = function() {
+        new YT.Player("playerWrap", {
+          videoId: id,
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            rel: 0,
+            modestbranding: 1,
+            playsinline: 1,
+            cc_load_policy: 0,
+            iv_load_policy: 3,
+            fs: 0,
+            disablekb: 1,
+            origin: window.location.origin
+          },
+          events: {
+            onReady: function(e) {
+              try {
+                e.target.setPlaybackQuality("hd1080");
+                e.target.playVideo();
+                e.target.unMute();
+                e.target.setVolume(100);
+              } catch (_) {}
+            }
           }
-        }
-      });
-    };
+        });
+      };
+    }
   </script>
 </body>
 </html>
