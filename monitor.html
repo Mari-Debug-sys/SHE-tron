@@ -1,38 +1,72 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
-  <style>
-    html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
-    #wrap{position:absolute;inset:0;overflow:hidden;background:#000}
-    iframe{
-      position:absolute;top:50%;left:50%;
-      width:100vw;height:56.25vw;transform:translate(-50%,-50%);
-      border:0;
-    }
-    @media (max-aspect-ratio: 16/9){
-      iframe{width:177.777vh;height:100vh;}
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
+<style>
+html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+#wrap{position:absolute;inset:0;overflow:hidden;background:#000}
+
+iframe{
+  position:absolute;top:50%;left:50%;
+  width:100vw;height:56.25vw;
+  transform:translate(-50%,-50%);
+  border:0;
+}
+@media (max-aspect-ratio: 16/9){
+  iframe{width:177.777vh;height:100vh;}
+}
+
+#idle{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
+  display:none;
+}
+</style>
 </head>
 <body>
-  <div id="wrap">
-    <iframe id="p" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-  </div>
-  <script>
-    const u = new URL(location.href);
-    const id = u.searchParams.get("v");
-    const origin = location.origin;
+<div id="wrap">
+  <img id="idle" alt="idle">
+  <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+</div>
 
-    if (id) {
-      document.getElementById("p").src =
-        "https://www.youtube-nocookie.com/embed/" + id +
-        "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1" +
-        "&iv_load_policy=3&modestbranding=1" +
-        "&loop=1&playlist=" + id +
-        "&origin=" + encodeURIComponent(origin);
-    }
-  </script>
+<script>
+const page = new URL(window.location.href);
+const id = page.searchParams.get("v");
+const origin = window.location.origin;
+
+// Same idle image
+const idleSrc = origin + "/SHE-tron/idle.png";  // <-- adjust to "/idle.png" if in repo root
+
+const idleImg = document.getElementById("idle");
+const frame = document.getElementById("player");
+
+function showIdle(){
+  frame.style.display = "none";
+  idleImg.style.display = "block";
+  idleImg.src = idleSrc;
+}
+
+function showVideo(videoId){
+  idleImg.style.display = "none";
+  frame.style.display = "block";
+
+  const src =
+    "https://www.youtube-nocookie.com/embed/" + videoId +
+    "?autoplay=1" +
+    "&mute=1" +                 // MUTED BACKSTAGE
+    "&controls=0&rel=0&playsinline=1" +
+    "&iv_load_policy=3&modestbranding=1" +
+    "&loop=1&playlist=" + videoId +
+    "&start=0&vq=hd720" +
+    "&origin=" + encodeURIComponent(origin);
+
+  frame.src = src;
+}
+
+if (!id) showIdle();
+else showVideo(id);
+</script>
 </body>
 </html>
