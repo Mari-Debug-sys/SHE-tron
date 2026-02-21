@@ -1,121 +1,96 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SHE Tron</title>
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
       background: #000;
       overflow: hidden;
     }
-    /* We will size the iframe ourselves with JS */
-    #wrap {
+
+    /* This is the surface the prim is drawing */
+    #stage {
       position: fixed;
       inset: 0;
       background: #000;
-      overflow: hidden;
     }
-    #player {
+
+    /* We apply fit/fill by changing how the iframe is sized */
+    .fit iframe {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* "fill" = oversize slightly so there are no bars */
+    .fill iframe {
+      width: 115%;
+      height: 115%;
       position: absolute;
-      left: 50%;
-      top: 50%;
-      transform-origin: 50% 50%;
+      left: -7.5%;
+      top: -7.5%;
+    }
+
+    iframe {
       border: 0;
+      display: block;
+      background: #000;
+    }
+
+    /* Optional idle image block (if you add one later) */
+    #idle {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      color: #999;
+      font-family: sans-serif;
     }
   </style>
 </head>
 <body>
-  <div id="wrap">
-    <iframe id="player"
-      allow="autoplay; fullscreen"
-      allowfullscreen
-      referrerpolicy="strict-origin-when-cross-origin">
-    </iframe>
-  </div>
+  <div id="stage" class="fill"></div>
 
   <script>
-    function qs(name, def="") {
-      const u = new URL(window.location.href);
-      return u.searchParams.get(name) ?? def;
+    const qs = new URLSearchParams(location.search);
+    const v = (qs.get("v") || "").trim();
+    const mode = (qs.get("mode") || "fill").toLowerCase(); // default fill
+
+    const stage = document.getElementById("stage");
+    stage.className = (mode === "fit") ? "fit" : "fill";
+
+    if (!v) {
+      // No video id => just stay black
+      // (You can replace this with an idle image later)
+    } else {
+      // YouTube embed: strip UI and captions as much as possible.
+      // autoplay + playsinline; keep controls off.
+      const src =
+        "https://www.youtube.com/embed/" + encodeURIComponent(v) +
+        "?autoplay=1" +
+        "&playsinline=1" +
+        "&controls=0" +
+        "&disablekb=1" +
+        "&fs=0" +
+        "&rel=0" +
+        "&modestbranding=1" +
+        "&iv_load_policy=3" +
+        "&cc_load_policy=0" +
+        "&hl=en" +
+        "&mute=0";
+
+      const iframe = document.createElement("iframe");
+      iframe.src = src;
+      iframe.allow =
+        "autoplay; encrypted-media; picture-in-picture";
+      iframe.allowFullscreen = false;
+
+      stage.innerHTML = "";
+      stage.appendChild(iframe);
     }
-
-    const vid  = qs("v", "");
-    const mode = (qs("mode", "fit") || "fit").toLowerCase(); // fit | fill
-
-    // Build YouTube embed with captions OFF + minimal UI
-    // NOTE: YouTube will still obey its own policies and can still choose stream quality.
-    function buildSrc(id) {
-      const p = new URLSearchParams({
-        autoplay: "1",
-        mute: "0",
-        controls: "0",
-        rel: "0",
-        playsinline: "1",
-        iv_load_policy: "3",
-        modestbranding: "1",
-        fs: "0",
-        // captions OFF:
-        cc_load_policy: "0",
-        // quality hint:
-        vq: "hd1080"
-      });
-      return "https://www.youtube.com/embed/" + encodeURIComponent(id) + "?" + p.toString();
-    }
-
-    const iframe = document.getElementById("player");
-    if (vid) iframe.src = buildSrc(vid);
-
-    // --- Fit / Fill sizing ---
-    // We keep the video in 16:9 space, then either:
-    // - fit: show whole frame (bars if needed)
-    // - fill: crop to remove bars (no bars)
-    function layout() {
-      const W = window.innerWidth;
-      const H = window.innerHeight;
-
-      // Base video aspect
-      const videoAR = 16/9;
-      const viewAR  = W/H;
-
-      // We set iframe to a 16:9 rectangle, centered,
-      // then scale it depending on mode.
-      let baseW, baseH;
-
-      if (viewAR >= videoAR) {
-        // viewport is wider than 16:9
-        baseH = H;
-        baseW = H * videoAR;
-      } else {
-        // viewport is taller/narrower than 16:9
-        baseW = W;
-        baseH = W / videoAR;
-      }
-
-      iframe.style.width  = baseW + "px";
-      iframe.style.height = baseH + "px";
-
-      // FIT = no crop, FILL = crop to remove bars
-      let scale = 1;
-      if (mode === "fill") {
-        // scale up until it covers the viewport
-        const scaleX = W / baseW;
-        const scaleY = H / baseH;
-        scale = Math.max(scaleX, scaleY);
-      } else {
-        // fit: scale down if needed (usually 1)
-        scale = 1;
-      }
-
-      iframe.style.transform = `translate(-50%, -50%) scale(${scale})`;
-    }
-
-    window.addEventListener("resize", layout);
-    layout();
   </script>
 </body>
 </html>
