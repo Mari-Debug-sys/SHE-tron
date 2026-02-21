@@ -4,81 +4,70 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
 <style>
-html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
-#wrap{position:absolute;inset:0;background:#000}
-
+html,body{
+  margin:0; width:100%; height:100%;
+  background:#000; overflow:hidden;
+}
+#wrap{position:absolute; inset:0; background:#000;}
 #idle{
   position:absolute; inset:0;
   width:100%; height:100%;
   object-fit:contain;
-  display:none;
   background:#000;
-}
-
-#stage{
-  position:absolute; inset:0;
-  overflow:hidden;
   display:none;
-  background:#000;
 }
-
 #player{
-  position:absolute;
-  top:50%; left:50%;
-  transform:translate(-50%,-50%) scale(1);
-  width:100%;
-  height:100%;
-  min-width:177.78vh;
-  min-height:56.25vw;
+  position:absolute; inset:0;
+  width:100%; height:100%;
   border:0;
+  display:none;
 }
 </style>
 </head>
 <body>
 <div id="wrap">
   <img id="idle" alt="idle">
-  <div id="stage">
-    <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-  </div>
+  <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
 </div>
 
 <script>
 const qs = new URLSearchParams(location.search);
-const v  = qs.get("v");
-const z  = parseFloat(qs.get("z")||"1");
+const id = qs.get("v");
 const origin = location.origin;
-
-const idleImg = document.getElementById("idle");
-const stage   = document.getElementById("stage");
-const frame   = document.getElementById("player");
 
 const idleSrc = origin + "/SHE-tron/idle.png";
 
+const idleImg = document.getElementById("idle");
+const frame   = document.getElementById("player");
+
 function showIdle(){
   frame.src = "";
-  stage.style.display = "none";
+  frame.style.display = "none";
   idleImg.style.display = "block";
   idleImg.src = idleSrc;
 }
 
-function showVideo(id){
+function showVideo(videoId){
   idleImg.style.display = "none";
-  stage.style.display = "block";
-
-  const zoom = Math.min(Math.max(z, 1.0), 1.35);
-  frame.style.transform = "translate(-50%,-50%) scale(" + zoom.toFixed(3) + ")";
+  frame.style.display = "block";
 
   frame.src =
-    "https://www.youtube-nocookie.com/embed/" + id +
-    "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1" +
-    "&iv_load_policy=3&modestbranding=1" +
-    "&loop=1&playlist=" + id +
-    "&start=0&vq=hd720" +
+    "https://www.youtube-nocookie.com/embed/" + videoId +
+    "?autoplay=1" +
+    "&mute=1" +                       // MUTED (backstage)
+    "&controls=0" +
+    "&rel=0" +
+    "&playsinline=1" +
+    "&iv_load_policy=3" +
+    "&modestbranding=1" +
+    "&loop=1&playlist=" + videoId +
+    "&start=0" +
+    "&vq=hd720" +
     "&origin=" + encodeURIComponent(origin);
 }
 
-if(!v) showIdle();
-else showVideo(v);
+if(!id) showIdle();
+else showVideo(id);
 </script>
 </body>
 </html>
