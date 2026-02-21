@@ -3,99 +3,56 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
-
 <style>
-html, body{
-  margin:0;
-  width:100%;
-  height:100%;
-  background:#000;
-  overflow:hidden;
-}
-#wrap{
-  position:absolute;
-  inset:0;
-  background:#000;
-}
+html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+#wrap{position:absolute;inset:0;background:#000}
 
-/* idle image */
 #idle{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
+  position:absolute; inset:0;
+  width:100%; height:100%;
   object-fit:contain;
-  background:#000;
   display:none;
+  background:#000;
 }
 
-/* stage is what we crop/fit */
 #stage{
-  position:absolute;
-  inset:0;
+  position:absolute; inset:0;
   overflow:hidden;
   display:none;
   background:#000;
 }
 
-/* iframe always centered; we control its scaling */
+/* We always do COVER fill (no bars), but keep it mild */
 #player{
   position:absolute;
-  top:50%;
-  left:50%;
+  top:50%; left:50%;
   transform:translate(-50%,-50%) scale(1);
   width:100%;
   height:100%;
+  min-width:177.78vh;   /* 16:9 cover */
+  min-height:56.25vw;
   border:0;
-}
-
-/* CONTAIN: keep everything visible (bars allowed) */
-#stage.contain #player{
-  transform:translate(-50%,-50%) scale(1);
-  width:100%;
-  height:100%;
-}
-
-/* COVER: fill the prim (may crop edges) */
-#stage.cover #player{
-  /* The min-width/min-height do the classic 16:9 cover fill */
-  width:100%;
-  height:100%;
-  min-width:177.78vh;
-  min-height:56.25vw;
-}
-
-/* COVER+ZOOM: same as cover, but zoom further to push baked bars offscreen */
-#stage.coverzoom #player{
-  width:100%;
-  height:100%;
-  min-width:177.78vh;
-  min-height:56.25vw;
-  /* zoom value is set by JS (scale) */
 }
 </style>
 </head>
-
 <body>
 <div id="wrap">
   <img id="idle" alt="idle">
-  <div id="stage" class="contain">
+  <div id="stage">
     <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
   </div>
 </div>
 
 <script>
 const qs = new URLSearchParams(location.search);
-const vid  = qs.get("v");                               // YouTube ID
-const mode = (qs.get("mode") || "coverzoom").toLowerCase(); // contain | cover | coverzoom
-const zoom = parseFloat(qs.get("zoom") || "1.33");      // used only for coverzoom
+const v  = qs.get("v");                 // video id
+const z  = parseFloat(qs.get("z")||"1"); // optional gentle zoom, default 1.00
 const origin = location.origin;
 
 const idleImg = document.getElementById("idle");
 const stage   = document.getElementById("stage");
 const frame   = document.getElementById("player");
 
-// repo root idle graphic
 const idleSrc = origin + "/SHE-tron/idle.png";
 
 function showIdle(){
@@ -109,35 +66,21 @@ function showVideo(id){
   idleImg.style.display = "none";
   stage.style.display = "block";
 
-  // pick mode
-  if (mode === "contain") stage.className = "contain";
-  else if (mode === "cover") stage.className = "cover";
-  else stage.className = "coverzoom";
-
-  // apply zoom only when coverzoom
-  if (stage.className === "coverzoom"){
-    frame.style.transform = "translate(-50%,-50%) scale(" + zoom.toFixed(3) + ")";
-  } else {
-    frame.style.transform = "translate(-50%,-50%) scale(1)";
-  }
+  // clamp zoom so nobody nukes framing
+  const zoom = Math.min(Math.max(z, 1.0), 1.35);
+  frame.style.transform = "translate(-50%,-50%) scale(" + zoom.toFixed(3) + ")";
 
   frame.src =
     "https://www.youtube-nocookie.com/embed/" + id +
-    "?autoplay=1" +
-    "&mute=0" +                     // ARENA AUDIO
-    "&controls=0" +
-    "&rel=0" +
-    "&playsinline=1" +
-    "&iv_load_policy=3" +
-    "&modestbranding=1" +
+    "?autoplay=1&mute=0&controls=0&rel=0&playsinline=1" +
+    "&iv_load_policy=3&modestbranding=1" +
     "&loop=1&playlist=" + id +
-    "&start=0" +
-    "&vq=hd720" +
+    "&start=0&vq=hd720" +
     "&origin=" + encodeURIComponent(origin);
 }
 
-if(!vid) showIdle();
-else showVideo(vid);
+if(!v) showIdle();
+else showVideo(v);
 </script>
 </body>
 </html>
