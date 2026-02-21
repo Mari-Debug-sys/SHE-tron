@@ -3,70 +3,94 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
+
 <style>
-html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
-#wrap{position:absolute;inset:0;overflow:hidden;background:#000}
+html,body{
+margin:0;
+width:100%;
+height:100%;
+background:#000;
+overflow:hidden;
+}
+
+#wrap{
+position:absolute;
+inset:0;
+background:#000;
+}
 
 iframe{
-  position:absolute;top:50%;left:50%;
-  width:100vw;height:56.25vw;
-  transform:translate(-50%,-50%);
-  border:0;
+position:absolute;
+top:50%;
+left:50%;
+width:100vw;
+height:56.25vw;
+transform:translate(-50%,-50%);
+border:0;
 }
-@media (max-aspect-ratio: 16/9){
-  iframe{width:177.777vh;height:100vh;}
+
+@media (max-aspect-ratio:16/9){
+iframe{
+width:177.777vh;
+height:100vh;
+}
 }
 
 #idle{
-  position:absolute;inset:0;
-  width:100%;height:100%;
-  object-fit:cover;
-  display:none;
+position:absolute;
+inset:0;
+width:100%;
+height:100%;
+object-fit:cover;
+display:none;
 }
 </style>
 </head>
+
 <body>
 <div id="wrap">
-  <img id="idle" alt="idle">
-  <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+<img id="idle">
+<iframe id="player" allow="autoplay; encrypted-media; fullscreen"></iframe>
 </div>
 
 <script>
-const page = new URL(window.location.href);
-const id = page.searchParams.get("v");
+const params = new URLSearchParams(window.location.search);
+const video = params.get("v");
 const origin = window.location.origin;
-
-// Same idle image
-const idleSrc = origin + "/SHE-tron/idle.png";  // <-- adjust to "/idle.png" if in repo root
 
 const idleImg = document.getElementById("idle");
 const frame = document.getElementById("player");
 
+const idleSrc = origin + "/SHE-tron/idle.png";
+
 function showIdle(){
-  frame.style.display = "none";
-  idleImg.style.display = "block";
-  idleImg.src = idleSrc;
+frame.src="";
+frame.style.display="none";
+idleImg.style.display="block";
+idleImg.src=idleSrc;
 }
 
-function showVideo(videoId){
-  idleImg.style.display = "none";
-  frame.style.display = "block";
+function showVideo(id){
+idleImg.style.display="none";
+frame.style.display="block";
 
-  const src =
-    "https://www.youtube-nocookie.com/embed/" + videoId +
-    "?autoplay=1" +
-    "&mute=1" +                 // MUTED BACKSTAGE
-    "&controls=0&rel=0&playsinline=1" +
-    "&iv_load_policy=3&modestbranding=1" +
-    "&loop=1&playlist=" + videoId +
-    "&start=0&vq=hd720" +
-    "&origin=" + encodeURIComponent(origin);
-
-  frame.src = src;
+frame.src =
+"https://www.youtube-nocookie.com/embed/"+id+
+"?autoplay=1"+
+"&mute=1"+
+"&controls=0"+
+"&rel=0"+
+"&playsinline=1"+
+"&iv_load_policy=3"+
+"&modestbranding=1"+
+"&loop=1&playlist="+id+
+"&start=0"+
+"&vq=hd720"+
+"&origin="+encodeURIComponent(origin);
 }
 
-if (!id) showIdle();
-else showVideo(id);
+if(!video) showIdle();
+else showVideo(video);
 </script>
 </body>
 </html>
