@@ -1,122 +1,152 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SHE Tron</title>
-
   <style>
     html, body {
       margin: 0;
+      padding: 0;
       width: 100%;
       height: 100%;
       background: #000;
       overflow: hidden;
     }
 
-    /* The stage is always the exact page size */
-    #stage {
-      position: fixed;
+    /* This is the “screen area” the player fills. */
+    #frame {
+      position: absolute;
       inset: 0;
-      width: 100vw;
-      height: 100vh;
       background: #000;
-      overflow: hidden;
     }
 
-    /*
-      The iframe is intentionally oversized and centered.
-      We then use transforms to achieve contain/cover/stretch without bars.
-    */
-    #yt {
+    /* Keep a strict 16:9 player area centered inside the viewport (contain).
+       If the prim face isn't 16:9, THIS will letterbox (bars). That's expected.
+       To remove bars without cropping, your PRIM FACE must be 16:9. */
+    #stage {
       position: absolute;
       left: 50%;
       top: 50%;
-
-      /* Base: 16:9 box (YouTube's native shape) */
-      width: 100vw;
-      height: calc(100vw * 9 / 16);
-
+      width: min(100vw, calc(100vh * (16 / 9)));
+      height: min(100vh, calc(100vw * (9 / 16)));
       transform: translate(-50%, -50%);
-      border: 0;
       background: #000;
-      display: block;
     }
 
-    /* If viewport is wider than 16:9, height becomes limiting */
-    @media (min-aspect-ratio: 16/9) {
-      #yt {
-        width: calc(100vh * 16 / 9);
-        height: 100vh;
-      }
+    #player, iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
 
-    /* Modes */
-    body.mode-cover #yt {
-      /* Make it fill the viewport: no bars, crop if needed */
-      /* We scale the 16:9 box until it covers both axes */
-      /* The media queries already fit one axis; cover means scale up to cover both */
-      transform: translate(-50%, -50%) scale(1.12);
-    }
-
-    body.mode-contain #yt {
-      /* Preserve everything; if aspect mismatches, you get bars */
-      transform: translate(-50%, -50%) scale(1.0);
-    }
-
-    body.mode-stretch #yt {
-      /* Stretch to exact viewport (distorts) */
-      width: 100vw !important;
-      height: 100vh !important;
-      transform: translate(-50%, -50%);
+    /* Optional idle overlay if no video */
+    #idle {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      color: #aaa;
+      font: 20px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      letter-spacing: 0.04em;
     }
   </style>
 </head>
-
-<body class="mode-cover">
-  <div id="stage">
-    <iframe
-      id="yt"
-      allow="autoplay; encrypted-media; picture-in-picture"
-      allowfullscreen
-      referrerpolicy="origin"
-      src=""
-    ></iframe>
+<body>
+  <div id="frame">
+    <div id="stage">
+      <div id="player"></div>
+      <div id="idle">SHE TRON • IDLE</div>
+    </div>
   </div>
 
   <script>
-    // --- Query helpers ---
-    const qs = new URLSearchParams(location.search);
-
-    // v=VIDEOID
-    const vid = (qs.get("v") || "").trim();
-
-    // mode=cover|contain|stretch  (default cover)
-    const mode = (qs.get("mode") || "cover").toLowerCase();
-    document.body.classList.remove("mode-cover","mode-contain","mode-stretch");
-    document.body.classList.add("mode-" + (["cover","contain","stretch"].includes(mode) ? mode : "cover"));
-
-    // idle page support: if no v param, show a black screen (no bars)
-    if (!vid) {
-      // keep empty black stage
-      // (this prevents “white screen” on stop)
-    } else {
-      // YouTube embed with minimal UI
-      // IMPORTANT: playsinline=1 + autoplay=1
-      // controls=0 helps prevent "reserved UI" space
-      const src =
-        "https://www.youtube.com/embed/" + encodeURIComponent(vid) +
-        "?autoplay=1" +
-        "&playsinline=1" +
-        "&controls=0" +
-        "&rel=0" +
-        "&modestbranding=1" +
-        "&iv_load_policy=3" +
-        "&fs=0" +
-        "&mute=0";
-
-      document.getElementById("yt").src = src;
+    function qp(name) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name) || "";
     }
+
+    // Accept either:
+    //  - ?v=VIDEOID
+    //  - full YouTube URL
+    //  - youtu.be/VIDEOID
+    function extractId(input) {
+      if (!input) return "";
+      let s = String(input).trim();
+
+      // already looks like an ID
+      if (/^[a-zA-Z0-9_-]{6,}$/.test(s) && !s.includes("http") && !s.includes("youtu")) return s;
+
+      // v=...
+      let m = s.match(/[?&]v=([^&]+)/);
+      if (m && m[1]) return m[1];
+
+      // youtu.be/...
+      m = s.match(/youtu\.be\/([^?&]+)/);
+      if (m && m[1]) return m[1];
+
+      // embed/...
+      m = s.match(/youtube\.com\/embed\/([^?&]+)/);
+      if (m && m[1]) return m[1];
+
+      return s;
+    }
+
+    const raw = qp("v");
+    const id = extractId(raw);
+
+    const idle = document.getElementById("idle");
+    if (!id) {
+      idle.style.display = "grid";
+    }
+
+    // Load YT Iframe API
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+
+    let player = null;
+
+    window.onYouTubeIframeAPIReady = function() {
+      if (!id) return;
+
+      player = new YT.Player("player", {
+        videoId: id,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+
+          // Kill captions + “annotations”/overlay junk
+          cc_load_policy: 0,
+          iv_load_policy: 3,
+
+          // Helpful for embedded contexts
+          fs: 0,
+          disablekb: 1,
+
+          // This can help some embeds start faster
+          origin: window.location.origin
+        },
+        events: {
+          onReady: function(e) {
+            try {
+              // Try to push higher quality. (YouTube may still decide.)
+              e.target.setPlaybackQuality("hd1080");
+              e.target.playVideo();
+
+              // Try to keep audio on without requiring a click (viewer-dependent).
+              e.target.unMute();
+              e.target.setVolume(100);
+            } catch (_) {}
+          }
+        }
+      });
+    };
   </script>
 </body>
 </html>
