@@ -1,28 +1,101 @@
 <!doctype html>
-<html><head>
+<html>
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
+
 <style>
-html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
-#idle{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;background:#000}
-#player{position:absolute;inset:0;width:100%;height:100%;border:0;display:none}
-</style></head>
-<body>
-<img id="idle" alt="idle">
-<iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-<script>
-const qs=new URLSearchParams(location.search);
-const v=qs.get("v");
-const origin=location.origin;
-const idleSrc=origin+"/SHE-tron/idle.png";
-const idle=document.getElementById("idle");
-const f=document.getElementById("player");
-if(!v){ f.src=""; f.style.display="none"; idle.style.display="block"; idle.src=idleSrc; }
-else{
-  idle.style.display="none"; f.style.display="block";
-  f.src="https://www.youtube-nocookie.com/embed/"+v+
-  "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1&iv_load_policy=3&modestbranding=1&loop=1&playlist="+v+
-  "&vq=hd720&origin="+encodeURIComponent(origin);
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
 }
+
+#wrap {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+#idle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+#bg {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  border: 0;
+  filter: blur(22px) brightness(0.65) saturate(1.15);
+  transform: scale(1.08);
+  display: none;
+}
+
+#fg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: none;
+}
+</style>
+</head>
+
+<body>
+<div id="wrap">
+  <img id="idle" alt="idle">
+  <iframe id="bg" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+  <iframe id="fg" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+</div>
+
+<script>
+const qs = new URLSearchParams(location.search);
+const id = qs.get("v");
+const origin = location.origin;
+const idleSrc = origin + "/SHE-tron/idle.png";
+
+const idle = document.getElementById("idle");
+const bg   = document.getElementById("bg");
+const fg   = document.getElementById("fg");
+
+function showIdle(){
+  bg.src = ""; fg.src = "";
+  bg.style.display = "none";
+  fg.style.display = "none";
+  idle.style.display = "block";
+  idle.src = idleSrc;
+}
+
+function showVideo(videoId){
+  idle.style.display = "none";
+  bg.style.display = "block";
+  fg.style.display = "block";
+
+  // both muted on the monitor
+  bg.src =
+    "https://www.youtube-nocookie.com/embed/" + videoId +
+    "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1" +
+    "&iv_load_policy=3&modestbranding=1&loop=1&playlist=" + videoId +
+    "&vq=hd720&origin=" + encodeURIComponent(origin);
+
+  fg.src =
+    "https://www.youtube-nocookie.com/embed/" + videoId +
+    "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1" +
+    "&iv_load_policy=3&modestbranding=1&loop=1&playlist=" + videoId +
+    "&vq=hd720&origin=" + encodeURIComponent(origin);
+}
+
+if(!id) showIdle();
+else showVideo(id);
 </script>
-</body></html>
+</body>
+</html>
