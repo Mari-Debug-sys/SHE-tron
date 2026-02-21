@@ -1,108 +1,28 @@
 <!doctype html>
-<html>
-<head>
+<html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
 <style>
-html,body{
-  margin:0; width:100%; height:100%;
-  background:#000; overflow:hidden;
-}
-#wrap{ position:absolute; inset:0; background:#000; overflow:hidden; }
-
-#idle{
-  position:absolute; inset:0;
-  width:100%; height:100%;
-  object-fit:cover;
-  display:none;
-}
-
-#box{
-  position:absolute;
-  top:50%; left:50%;
-  transform:translate(-50%,-50%);
-  overflow:hidden;
-  display:none;
-  background:#000;
-}
-
-#player{
-  position:absolute; inset:0;
-  width:100%; height:100%;
-  border:0;
-}
-</style>
-</head>
+html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+#idle{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;background:#000}
+#player{position:absolute;inset:0;width:100%;height:100%;border:0;display:none}
+</style></head>
 <body>
-<div id="wrap">
-  <img id="idle" alt="idle">
-  <div id="box">
-    <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-  </div>
-</div>
-
+<img id="idle" alt="idle">
+<iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
 <script>
-const qs = new URLSearchParams(location.search);
-const vid = qs.get("v");
-const origin = location.origin;
-
-const idleSrc = origin + "/SHE-tron/idle.png";
-
-const idleImg = document.getElementById("idle");
-const box     = document.getElementById("box");
-const frame   = document.getElementById("player");
-
-const TARGET_AR = 16 / 9;
-
-function setCoverBox() {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const ar = vw / vh;
-
-  let w, h;
-  if (ar > TARGET_AR) {
-    w = vw;
-    h = vw / TARGET_AR;
-  } else {
-    h = vh;
-    w = vh * TARGET_AR;
-  }
-
-  box.style.width  = w + "px";
-  box.style.height = h + "px";
+const qs=new URLSearchParams(location.search);
+const v=qs.get("v");
+const origin=location.origin;
+const idleSrc=origin+"/SHE-tron/idle.png";
+const idle=document.getElementById("idle");
+const f=document.getElementById("player");
+if(!v){ f.src=""; f.style.display="none"; idle.style.display="block"; idle.src=idleSrc; }
+else{
+  idle.style.display="none"; f.style.display="block";
+  f.src="https://www.youtube-nocookie.com/embed/"+v+
+  "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1&iv_load_policy=3&modestbranding=1&loop=1&playlist="+v+
+  "&vq=hd720&origin="+encodeURIComponent(origin);
 }
-
-function showIdle(){
-  frame.src = "";
-  box.style.display = "none";
-  idleImg.style.display = "block";
-  idleImg.src = idleSrc;
-}
-
-function showVideo(id){
-  idleImg.style.display = "none";
-  box.style.display = "block";
-
-  setCoverBox();
-  window.addEventListener("resize", setCoverBox);
-
-  frame.src =
-    "https://www.youtube-nocookie.com/embed/" + id +
-    "?autoplay=1" +
-    "&mute=1" +                 // MUTED BACKSTAGE
-    "&controls=0" +
-    "&rel=0" +
-    "&playsinline=1" +
-    "&iv_load_policy=3" +
-    "&modestbranding=1" +
-    "&loop=1&playlist=" + id +
-    "&start=0" +
-    "&vq=hd720" +
-    "&origin=" + encodeURIComponent(origin);
-}
-
-if (!vid) showIdle();
-else showVideo(vid);
 </script>
-</body>
-</html>
+</body></html>
