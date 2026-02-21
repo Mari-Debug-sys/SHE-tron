@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
+  <style>
+    html,body{margin:0;height:100%;background:#000;overflow:hidden}
+    iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  </style>
+</head>
+<body>
+  <iframe id="p" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+  <script>
+    const u = new URL(location.href);
+    const id = u.searchParams.get("v");
+    const origin = location.origin;
+    if (id) {
+      document.getElementById("p").src =
+        "https://www.youtube.com/embed/" + id +
+        "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1" +
+        "&iv_load_policy=3&modestbranding=1" +
+        "&origin=" + encodeURIComponent(origin);
+    }
+  </script>
+</body>
+</html>
