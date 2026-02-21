@@ -5,40 +5,73 @@
 <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
 
 <style>
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  overflow: hidden;
+html, body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+}
+#wrap{
+  position:absolute;
+  inset:0;
+  background:#000;
 }
 
-#wrap {
-  position: absolute;
-  inset: 0;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* idle image */
+#idle{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#000;
+  display:none;
 }
 
-/* Idle image: no crop */
-#idle {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;   /* <-- IMPORTANT: contain, not cover */
-  background: #000;
-  display: none;
+/* stage is what we crop/fit */
+#stage{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  display:none;
+  background:#000;
 }
 
-/* Video: no crop */
-#player {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: none;
+/* iframe always centered; we control its scaling */
+#player{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(1);
+  width:100%;
+  height:100%;
+  border:0;
+}
+
+/* CONTAIN: keep everything visible (bars allowed) */
+#stage.contain #player{
+  transform:translate(-50%,-50%) scale(1);
+  width:100%;
+  height:100%;
+}
+
+/* COVER: fill the prim (may crop edges) */
+#stage.cover #player{
+  /* The min-width/min-height do the classic 16:9 cover fill */
+  width:100%;
+  height:100%;
+  min-width:177.78vh;
+  min-height:56.25vw;
+}
+
+/* COVER+ZOOM: same as cover, but zoom further to push baked bars offscreen */
+#stage.coverzoom #player{
+  width:100%;
+  height:100%;
+  min-width:177.78vh;
+  min-height:56.25vw;
+  /* zoom value is set by JS (scale) */
 }
 </style>
 </head>
@@ -46,48 +79,65 @@ html, body {
 <body>
 <div id="wrap">
   <img id="idle" alt="idle">
-  <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+  <div id="stage" class="contain">
+    <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+  </div>
 </div>
 
 <script>
-const params = new URLSearchParams(window.location.search);
-const id = params.get("v");
-const origin = window.location.origin;
-
-// repo root file: https://mari-debug-sys.github.io/SHE-tron/idle.png
-const idleSrc = origin + "/SHE-tron/idle.png";
+const qs = new URLSearchParams(location.search);
+const vid  = qs.get("v");                               // YouTube ID
+const mode = (qs.get("mode") || "coverzoom").toLowerCase(); // contain | cover | coverzoom
+const zoom = parseFloat(qs.get("zoom") || "1.33");      // used only for coverzoom
+const origin = location.origin;
 
 const idleImg = document.getElementById("idle");
-const frame = document.getElementById("player");
+const stage   = document.getElementById("stage");
+const frame   = document.getElementById("player");
+
+// repo root idle graphic
+const idleSrc = origin + "/SHE-tron/idle.png";
 
 function showIdle(){
   frame.src = "";
-  frame.style.display = "none";
+  stage.style.display = "none";
   idleImg.style.display = "block";
   idleImg.src = idleSrc;
 }
 
-function showVideo(videoId){
+function showVideo(id){
   idleImg.style.display = "none";
-  frame.style.display = "block";
+  stage.style.display = "block";
+
+  // pick mode
+  if (mode === "contain") stage.className = "contain";
+  else if (mode === "cover") stage.className = "cover";
+  else stage.className = "coverzoom";
+
+  // apply zoom only when coverzoom
+  if (stage.className === "coverzoom"){
+    frame.style.transform = "translate(-50%,-50%) scale(" + zoom.toFixed(3) + ")";
+  } else {
+    frame.style.transform = "translate(-50%,-50%) scale(1)";
+  }
 
   frame.src =
-    "https://www.youtube-nocookie.com/embed/" + videoId +
+    "https://www.youtube-nocookie.com/embed/" + id +
     "?autoplay=1" +
-    "&mute=0" +                 // ARENA AUDIO
+    "&mute=0" +                     // ARENA AUDIO
     "&controls=0" +
     "&rel=0" +
     "&playsinline=1" +
     "&iv_load_policy=3" +
     "&modestbranding=1" +
-    "&loop=1&playlist=" + videoId +
+    "&loop=1&playlist=" + id +
     "&start=0" +
     "&vq=hd720" +
     "&origin=" + encodeURIComponent(origin);
 }
 
-if(!id) showIdle();
-else showVideo(id);
+if(!vid) showIdle();
+else showVideo(vid);
 </script>
 </body>
 </html>
