@@ -1,138 +1,133 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SHE Tron</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1" />
+  <title>SHE Tron</title>
+  <style>
+    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
 
-<style>
-html, body {
-  margin:0;
-  width:100%;
-  height:100%;
-  background:#000;
-  overflow:hidden;
-}
+    #frame { position:fixed; inset:0; background:#000; }
 
-/* Root frame */
-#frame {
-  position:fixed;
-  inset:0;
-  background:#000;
-}
+    /* Player layer fills the entire MOAP surface */
+    #playerWrap { position:absolute; inset:0; width:100%; height:100%; background:#000; }
 
-/* Player canvas — this is now the REAL surface */
-#player {
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  background:#000;
-}
+    /* Force the injected iframe to fill the entire surface */
+    #playerWrap iframe {
+      position:absolute !important;
+      inset:0 !important;
+      width:100% !important;
+      height:100% !important;
+      border:0 !important;
+      display:block !important;
+    }
 
-/* Force the injected YT iframe to obey us */
-#player iframe {
-  position:absolute !important;
-  top:0 !important;
-  left:0 !important;
-  width:100% !important;
-  height:100% !important;
-  border:0 !important;
-  display:block !important;
-}
+    /* Idle overlay */
+    #idle {
+      position:absolute;
+      inset:0;
+      background:#000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
 
-/* Idle layer */
-#idle {
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#000;
-}
-
-#idle img{
-  max-width:100%;
-  max-height:100%;
-  width:auto;
-  height:auto;
-  object-fit:contain;
-}
-</style>
+    /* Keep your centered, non-stretched idle image */
+    #idle img{
+      display:block;
+      max-width:100%;
+      max-height:100%;
+      width:auto;
+      height:auto;
+      object-fit:contain;
+      transform: translateY(var(--idleShift, 0vh));
+    }
+  </style>
 </head>
 
 <body>
-<div id="frame">
-  <div id="player"></div>
-  <div id="idle"><img id="idleImg"></div>
-</div>
+  <div id="frame">
+    <div id="playerWrap"></div>
+    <div id="idle"><img id="idleImg" alt="SHE Idle"></div>
+  </div>
 
-<script>
-function qp(name){
-  const u=new URL(window.location.href);
-  return u.searchParams.get(name)||"";
-}
+  <script>
+    function qp(name){
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name) || "";
+    }
 
-function extractId(input){
-  if(!input) return "";
-  let s=String(input).trim();
-  let m=s.match(/[?&]v=([^&]+)/); if(m&&m[1]) return m[1];
-  m=s.match(/youtu\.be\/([^?&]+)/); if(m&&m[1]) return m[1];
-  m=s.match(/youtube\.com\/embed\/([^?&]+)/); if(m&&m[1]) return m[1];
-  return s;
-}
+    function extractId(input){
+      if(!input) return "";
+      let s = String(input).trim();
+      let m = s.match(/[?&]v=([^&]+)/); if (m && m[1]) return m[1];
+      m = s.match(/youtu\.be\/([^?&]+)/); if (m && m[1]) return m[1];
+      m = s.match(/youtube\.com\/embed\/([^?&]+)/); if (m && m[1]) return m[1];
+      return s;
+    }
 
-/* ----- IDLE IMAGE ----- */
+    function baseDir(){
+      return location.origin + location.pathname.replace(/[^\/]*$/, "");
+    }
 
-const idleImg=document.getElementById("idleImg");
-const baseDir=location.origin+location.pathname.replace(/[^\/]*$/,"");
-idleImg.src=baseDir+"idle.png?cb="+Date.now();
+    // Idle image
+    const idleImg = document.getElementById("idleImg");
+    const cacheBust = qp("t") || Date.now();
+    const y = parseFloat(qp("y") || "0");
+    document.documentElement.style.setProperty("--idleShift", `${y}vh`);
 
-/* ----- VIDEO ----- */
-
-const raw=qp("v");
-const id=extractId(raw);
-
-if(!id){
-  document.getElementById("idle").style.display="flex";
-}else{
-
-  document.getElementById("idle").style.display="none";
-
-  // load YT API
-  const tag=document.createElement("script");
-  tag.src="https://www.youtube.com/iframe_api";
-  document.head.appendChild(tag);
-
-  window.onYouTubeIframeAPIReady=function(){
-
-    const player=new YT.Player("player",{
-      width:"100%",
-      height:"100%",
-      videoId:id,
-      playerVars:{
-        autoplay:1,
-        controls:0,
-        rel:0,
-        modestbranding:1,
-        playsinline:1,
-        iv_load_policy:3,
-        fs:0,
-        disablekb:1
-      },
-      events:{
-        onReady:function(e){
-          try{
-            e.target.playVideo();
-            e.target.unMute();
-            e.target.setVolume(100);
-          }catch(_){}
-        }
+    idleImg.onerror = function(){
+      // optional jpg fallback
+      if (!idleImg.src.endsWith("idle.jpg?cb=" + cacheBust)) {
+        idleImg.src = baseDir() + "idle.jpg?cb=" + cacheBust;
       }
-    });
+    };
+    idleImg.src = baseDir() + "idle.png?cb=" + cacheBust;
 
-  };
-}
-</script>
+    // Video
+    const raw = qp("v");
+    const id  = extractId(raw);
+
+    if(!id){
+      document.getElementById("idle").style.display = "flex";
+    } else {
+      document.getElementById("idle").style.display = "none";
+
+      // Load YouTube IFrame API
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+
+      window.onYouTubeIframeAPIReady = function(){
+        new YT.Player("playerWrap", {
+          videoId: id,
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            rel: 0,
+            modestbranding: 1,
+            playsinline: 1,
+            iv_load_policy: 3,
+            fs: 0,
+            disablekb: 1,
+            // DO NOT set mute=1 here
+          },
+          events: {
+            onReady: function(e){
+              try {
+                e.target.setPlaybackQuality("hd1080");
+                e.target.playVideo();
+
+                // Force audio on
+                e.target.unMute();
+                e.target.setVolume(100);
+              } catch(_) {}
+            }
+          }
+        });
+      };
+    }
+  </script>
 </body>
 </html>
