@@ -1,53 +1,116 @@
 <!doctype html>
-<html><head>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
+<title>SHE Backstage Monitor</title>
 <style>
-html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
-#idle{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;background:#000}
-#stage{position:absolute;inset:0;display:none;background:#000}
-#player{
-  position:absolute;
-  left:50%; top:50%;
-  transform:translate(-50%,-50%);
+html,body{
+  margin:0;
   width:100%;
   height:100%;
-  border:0;
+  background:#000;
+  overflow:hidden;
 }
-</style></head>
+
+/* Root */
+#frame{
+  position:fixed;
+  inset:0;
+  background:#000;
+}
+
+/* Idle image */
+#idle{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:none;
+  background:#000;
+}
+
+/* Stage container */
+#stage{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:none;
+  background:#000;
+  overflow:hidden;
+}
+
+/* Force the iframe to truly fill the page */
+#player{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  border:0 !important;
+  display:block !important;
+}
+</style>
+</head>
+
 <body>
-<img id="idle" alt="idle">
-<div id="stage">
-  <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+<div id="frame">
+  <img id="idle" alt="idle">
+  <div id="stage">
+    <iframe id="player"
+      allow="autoplay; encrypted-media; fullscreen"
+      allowfullscreen></iframe>
+  </div>
 </div>
 
 <script>
-const qs=new URLSearchParams(location.search);
-const v=qs.get("v");
-const origin=location.origin;
-const idleSrc=origin+"/SHE-tron/idle.png";
+const qs = new URLSearchParams(location.search);
+const v  = (qs.get("v") || "").trim();
 
-const idle=document.getElementById("idle");
-const stage=document.getElementById("stage");
-const f=document.getElementById("player");
+function baseDir(){
+  // folder of current HTML file
+  return location.origin + location.pathname.replace(/[^\/]*$/, "");
+}
+
+const idle = document.getElementById("idle");
+const stage = document.getElementById("stage");
+const f = document.getElementById("player");
+
+// idle.png in same folder as this html (safer than hardcoding /SHE-tron/)
+const idleSrc = baseDir() + "idle.png";
 
 function showIdle(){
-  f.src="";
-  stage.style.display="none";
-  idle.style.display="block";
-  idle.src=idleSrc;
+  f.src = "about:blank";
+  stage.style.display = "none";
+  idle.style.display = "block";
+  // cache-bust so it updates when you change the file
+  idle.src = idleSrc + "?cb=" + Date.now();
 }
 
 function showVideo(id){
-  idle.style.display="none";
-  stage.style.display="block";
-  f.src="https://www.youtube-nocookie.com/embed/"+id+
-    "?autoplay=1&mute=1&controls=0&rel=0&playsinline=1"+
-    "&iv_load_policy=3&modestbranding=1"+
-    "&loop=1&playlist="+id+
-    "&vq=hd720&origin="+encodeURIComponent(origin);
+  idle.style.display = "none";
+  stage.style.display = "block";
+
+  const origin = location.origin;
+  const url =
+    "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) +
+    "?autoplay=1" +
+    "&mute=1" +                 // intentional
+    "&controls=0" +
+    "&rel=0" +
+    "&playsinline=1" +
+    "&iv_load_policy=3" +
+    "&modestbranding=1" +
+    "&loop=1&playlist=" + encodeURIComponent(id) +
+    "&vq=hd720" +
+    "&origin=" + encodeURIComponent(origin);
+
+  f.src = url;
 }
 
-if(!v) showIdle(); else showVideo(v);
+if(!v) showIdle();
+else showVideo(v);
 </script>
-</body></html>
+</body>
+</html>
