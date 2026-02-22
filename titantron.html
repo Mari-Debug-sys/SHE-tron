@@ -6,14 +6,13 @@
   <title>SHE Tron</title>
   <style>
     html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
-
     #frame { position:fixed; inset:0; background:#000; }
 
-    /* Player layer fills the entire MOAP surface */
+    /* Player fills the entire MOAP surface */
     #playerWrap { position:absolute; inset:0; width:100%; height:100%; background:#000; }
 
-    /* Force the injected iframe to fill the entire surface */
-    #playerWrap iframe {
+    /* Force injected iframe to fill (fixes “mini in top-left”) */
+    #playerWrap iframe{
       position:absolute !important;
       inset:0 !important;
       width:100% !important;
@@ -24,23 +23,12 @@
 
     /* Idle overlay */
     #idle {
-      position:absolute;
-      inset:0;
-      background:#000;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
+      position:absolute; inset:0; background:#000;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
     }
-
-    /* Keep your centered, non-stretched idle image */
     #idle img{
-      display:block;
-      max-width:100%;
-      max-height:100%;
-      width:auto;
-      height:auto;
-      object-fit:contain;
+      display:block; max-width:100%; max-height:100%;
+      width:auto; height:auto; object-fit:contain;
       transform: translateY(var(--idleShift, 0vh));
     }
   </style>
@@ -57,7 +45,6 @@
       const u = new URL(window.location.href);
       return u.searchParams.get(name) || "";
     }
-
     function extractId(input){
       if(!input) return "";
       let s = String(input).trim();
@@ -66,22 +53,18 @@
       m = s.match(/youtube\.com\/embed\/([^?&]+)/); if (m && m[1]) return m[1];
       return s;
     }
-
     function baseDir(){
       return location.origin + location.pathname.replace(/[^\/]*$/, "");
     }
 
-    // Idle image
+    // Idle
     const idleImg = document.getElementById("idleImg");
     const cacheBust = qp("t") || Date.now();
     const y = parseFloat(qp("y") || "0");
     document.documentElement.style.setProperty("--idleShift", `${y}vh`);
 
     idleImg.onerror = function(){
-      // optional jpg fallback
-      if (!idleImg.src.endsWith("idle.jpg?cb=" + cacheBust)) {
-        idleImg.src = baseDir() + "idle.jpg?cb=" + cacheBust;
-      }
+      idleImg.src = baseDir() + "idle.jpg?cb=" + cacheBust;
     };
     idleImg.src = baseDir() + "idle.png?cb=" + cacheBust;
 
@@ -89,18 +72,42 @@
     const raw = qp("v");
     const id  = extractId(raw);
 
+    let player = null;
+    let forceTimer = null;
+
+    function forceAudio(){
+      if(!player) return;
+      try{
+        // These calls are safe even if already unmuted.
+        player.unMute();
+        player.setVolume(100);
+      }catch(_){}
+    }
+
+    function forceAudioBurst(ms){
+      // hammer for a short window to beat the “mutes after ready” behavior
+      const start = Date.now();
+      if(forceTimer) clearInterval(forceTimer);
+      forceTimer = setInterval(() => {
+        forceAudio();
+        if(Date.now() - start > ms){
+          clearInterval(forceTimer);
+          forceTimer = null;
+        }
+      }, 250);
+    }
+
     if(!id){
       document.getElementById("idle").style.display = "flex";
     } else {
       document.getElementById("idle").style.display = "none";
 
-      // Load YouTube IFrame API
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
       document.head.appendChild(tag);
 
       window.onYouTubeIframeAPIReady = function(){
-        new YT.Player("playerWrap", {
+        player = new YT.Player("playerWrap", {
           videoId: id,
           playerVars: {
             autoplay: 1,
@@ -110,19 +117,26 @@
             playsinline: 1,
             iv_load_policy: 3,
             fs: 0,
-            disablekb: 1,
-            // DO NOT set mute=1 here
+            disablekb: 1
           },
           events: {
             onReady: function(e){
-              try {
+              try{
                 e.target.setPlaybackQuality("hd1080");
                 e.target.playVideo();
+              }catch(_){}
 
-                // Force audio on
-                e.target.unMute();
-                e.target.setVolume(100);
-              } catch(_) {}
+              // Force audio immediately, then keep forcing for 2 seconds.
+              forceAudio();
+              forceAudioBurst(2000);
+            },
+            onStateChange: function(e){
+              // When playback actually starts, force again (this is the key timing).
+              // YT.PlayerState.PLAYING === 1
+              if (e && e.data === 1){
+                forceAudio();
+                forceAudioBurst(1500);
+              }
             }
           }
         });
