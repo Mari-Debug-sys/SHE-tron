@@ -1,126 +1,138 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SHE Tron</title>
-  <style>
-    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SHE Tron</title>
 
-    #frame { position:absolute; inset:0; background:#000; }
+<style>
+html, body {
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+}
 
-    /* IDLE LAYER */
-    #idle {
-      position:absolute;
-      inset:0;
-      background:#000;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-    }
+/* Root frame */
+#frame {
+  position:fixed;
+  inset:0;
+  background:#000;
+}
 
-    /* This is the key difference:
-       - We DO NOT force width/height 100%.
-       - We cap the image to the viewport and center it.
-    */
-    #idle img{
-      display:block;
-      max-width:100%;
-      max-height:100%;
-      width:auto;
-      height:auto;
-      object-fit:contain;
-      transform: translateY(var(--idleShift, 0vh));
-    }
+/* Player canvas — this is now the REAL surface */
+#player {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  background:#000;
+}
 
-    /* PLAYER LAYER */
-    #playerWrap { position:absolute; inset:0; background:#000; }
-  </style>
+/* Force the injected YT iframe to obey us */
+#player iframe {
+  position:absolute !important;
+  top:0 !important;
+  left:0 !important;
+  width:100% !important;
+  height:100% !important;
+  border:0 !important;
+  display:block !important;
+}
+
+/* Idle layer */
+#idle {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#000;
+}
+
+#idle img{
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+}
+</style>
 </head>
+
 <body>
-  <div id="frame">
-    <div id="playerWrap"></div>
-    <div id="idle"><img id="idleImg" alt="SHE Idle"></div>
-  </div>
+<div id="frame">
+  <div id="player"></div>
+  <div id="idle"><img id="idleImg"></div>
+</div>
 
-  <script>
-    function qp(name){
-      const u = new URL(window.location.href);
-      return u.searchParams.get(name) || "";
-    }
+<script>
+function qp(name){
+  const u=new URL(window.location.href);
+  return u.searchParams.get(name)||"";
+}
 
-    function extractId(input){
-      if(!input) return "";
-      let s = String(input).trim();
-      let m = s.match(/[?&]v=([^&]+)/); if (m && m[1]) return m[1];
-      m = s.match(/youtu\.be\/([^?&]+)/); if (m && m[1]) return m[1];
-      m = s.match(/youtube\.com\/embed\/([^?&]+)/); if (m && m[1]) return m[1];
-      return s;
-    }
+function extractId(input){
+  if(!input) return "";
+  let s=String(input).trim();
+  let m=s.match(/[?&]v=([^&]+)/); if(m&&m[1]) return m[1];
+  m=s.match(/youtu\.be\/([^?&]+)/); if(m&&m[1]) return m[1];
+  m=s.match(/youtube\.com\/embed\/([^?&]+)/); if(m&&m[1]) return m[1];
+  return s;
+}
 
-    // ---- CONFIG (EDIT THESE) ----
-    const IDLE_FILE_PNG = "idle.png"; // <-- set to your real filename
-    const IDLE_FILE_JPG = "idle.jpg"; // optional fallback
-    // -----------------------------
+/* ----- IDLE IMAGE ----- */
 
-    const idleParam = qp("idle");
-    const cacheBust = idleParam || Date.now();
+const idleImg=document.getElementById("idleImg");
+const baseDir=location.origin+location.pathname.replace(/[^\/]*$/,"");
+idleImg.src=baseDir+"idle.png?cb="+Date.now();
 
-    // Optional Y shift for the idle graphic (in vh)
-    // Use y=-6 to lift it up a bit, y=0 default centered, y=6 push down
-    const y = parseFloat(qp("y") || "0");
-    document.documentElement.style.setProperty("--idleShift", `${y}vh`);
+/* ----- VIDEO ----- */
 
-    const idleImg = document.getElementById("idleImg");
+const raw=qp("v");
+const id=extractId(raw);
 
-    function baseDir(){
-      // folder of current file
-      return location.origin + location.pathname.replace(/[^\/]*$/, "");
-    }
+if(!id){
+  document.getElementById("idle").style.display="flex";
+}else{
 
-    function setIdleSrc(file){
-      idleImg.src = `${baseDir()}${file}?cb=${cacheBust}`;
-    }
+  document.getElementById("idle").style.display="none";
 
-    idleImg.onerror = function(){
-      if (IDLE_FILE_JPG && !idleImg.src.includes(IDLE_FILE_JPG)) setIdleSrc(IDLE_FILE_JPG);
-    };
-    setIdleSrc(IDLE_FILE_PNG);
+  // load YT API
+  const tag=document.createElement("script");
+  tag.src="https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
 
-    const raw = qp("v");
-    const id  = extractId(raw);
+  window.onYouTubeIframeAPIReady=function(){
 
-    if(!id) {
-      // stay idle
-      document.getElementById("idle").style.display = "flex";
-    } else {
-      document.getElementById("idle").style.display = "none";
+    const player=new YT.Player("player",{
+      width:"100%",
+      height:"100%",
+      videoId:id,
+      playerVars:{
+        autoplay:1,
+        controls:0,
+        rel:0,
+        modestbranding:1,
+        playsinline:1,
+        iv_load_policy:3,
+        fs:0,
+        disablekb:1
+      },
+      events:{
+        onReady:function(e){
+          try{
+            e.target.playVideo();
+            e.target.unMute();
+            e.target.setVolume(100);
+          }catch(_){}
+        }
+      }
+    });
 
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(tag);
-
-      window.onYouTubeIframeAPIReady = function(){
-        new YT.Player("playerWrap", {
-          videoId: id,
-          playerVars: {
-            autoplay: 1, controls: 0, rel: 0, modestbranding: 1,
-            playsinline: 1, iv_load_policy: 3, fs: 0, disablekb: 1
-          },
-          events: {
-            onReady: function(e){
-              try {
-                e.target.setPlaybackQuality("hd1080");
-                e.target.playVideo();
-                e.target.unMute();
-                e.target.setVolume(100);
-              } catch(_) {}
-            }
-          }
-        });
-      };
-    }
-  </script>
+  };
+}
+</script>
 </body>
 </html>
