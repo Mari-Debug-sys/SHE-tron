@@ -1,147 +1,138 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1" />
-  <title>SHE Tron</title>
-  <style>
-    html, body { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
-    #frame { position:fixed; inset:0; background:#000; }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
+<title>SHE Tron</title>
 
-    /* Player fills the entire MOAP surface */
-    #playerWrap { position:absolute; inset:0; width:100%; height:100%; background:#000; }
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+}
 
-    /* Force injected iframe to fill (fixes “mini in top-left”) */
-    #playerWrap iframe{
-      position:absolute !important;
-      inset:0 !important;
-      width:100% !important;
-      height:100% !important;
-      border:0 !important;
-      display:block !important;
-    }
+/* root */
+#frame{
+  position:fixed;
+  inset:0;
+  background:#000;
+}
 
-    /* Idle overlay */
-    #idle {
-      position:absolute; inset:0; background:#000;
-      display:flex; align-items:center; justify-content:center; overflow:hidden;
-    }
-    #idle img{
-      display:block; max-width:100%; max-height:100%;
-      width:auto; height:auto; object-fit:contain;
-      transform: translateY(var(--idleShift, 0vh));
-    }
-  </style>
+/* VIDEO AREA */
+#playerWrap{
+  position:absolute;
+  inset:0;
+  overflow:hidden; /* this is critical — it lets us crop the empty YT canvas */
+  background:#000;
+}
+
+/*
+  THE FIX:
+  We intentionally make the YouTube player wider than the screen
+  and center it. The unused cinematic canvas gets cropped, not
+  your actual video artwork.
+*/
+#playerWrap iframe{
+  position:absolute !important;
+  top:50% !important;
+  left:50% !important;
+  transform:translate(-50%,-50%);
+
+  /* 16:9 -> overscan width */
+  width:177.78% !important;
+  height:100% !important;
+
+  border:0 !important;
+  display:block !important;
+}
+
+/* IDLE IMAGE */
+#idle{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#000;
+}
+
+#idle img{
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+}
+</style>
 </head>
 
 <body>
-  <div id="frame">
-    <div id="playerWrap"></div>
-    <div id="idle"><img id="idleImg" alt="SHE Idle"></div>
+
+<div id="frame">
+  <div id="playerWrap">
+    <iframe id="player"
+      allow="autoplay; encrypted-media; fullscreen"
+      allowfullscreen></iframe>
   </div>
 
-  <script>
-    function qp(name){
-      const u = new URL(window.location.href);
-      return u.searchParams.get(name) || "";
-    }
-    function extractId(input){
-      if(!input) return "";
-      let s = String(input).trim();
-      let m = s.match(/[?&]v=([^&]+)/); if (m && m[1]) return m[1];
-      m = s.match(/youtu\.be\/([^?&]+)/); if (m && m[1]) return m[1];
-      m = s.match(/youtube\.com\/embed\/([^?&]+)/); if (m && m[1]) return m[1];
-      return s;
-    }
-    function baseDir(){
-      return location.origin + location.pathname.replace(/[^\/]*$/, "");
-    }
+  <div id="idle">
+    <img id="idleImg" alt="SHE Idle">
+  </div>
+</div>
 
-    // Idle
-    const idleImg = document.getElementById("idleImg");
-    const cacheBust = qp("t") || Date.now();
-    const y = parseFloat(qp("y") || "0");
-    document.documentElement.style.setProperty("--idleShift", `${y}vh`);
+<script>
+const qs=new URLSearchParams(location.search);
+const v=qs.get("v");
 
-    idleImg.onerror = function(){
-      idleImg.src = baseDir() + "idle.jpg?cb=" + cacheBust;
-    };
-    idleImg.src = baseDir() + "idle.png?cb=" + cacheBust;
+function baseDir(){
+  return location.origin+location.pathname.replace(/[^\/]*$/,"");
+}
 
-    // Video
-    const raw = qp("v");
-    const id  = extractId(raw);
+const idleImg=document.getElementById("idleImg");
+idleImg.src=baseDir()+"idle.png?cb="+Date.now();
 
-    let player = null;
-    let forceTimer = null;
+function extractId(input){
+  if(!input) return "";
+  let s=input.trim();
+  let m=s.match(/[?&]v=([^&]+)/); if(m) return m[1];
+  m=s.match(/youtu\.be\/([^?&]+)/); if(m) return m[1];
+  return s;
+}
 
-    function forceAudio(){
-      if(!player) return;
-      try{
-        // These calls are safe even if already unmuted.
-        player.unMute();
-        player.setVolume(100);
-      }catch(_){}
-    }
+const f=document.getElementById("player");
 
-    function forceAudioBurst(ms){
-      // hammer for a short window to beat the “mutes after ready” behavior
-      const start = Date.now();
-      if(forceTimer) clearInterval(forceTimer);
-      forceTimer = setInterval(() => {
-        forceAudio();
-        if(Date.now() - start > ms){
-          clearInterval(forceTimer);
-          forceTimer = null;
-        }
-      }, 250);
-    }
+function showIdle(){
+  f.src="about:blank";
+  document.getElementById("playerWrap").style.display="none";
+  document.getElementById("idle").style.display="flex";
+}
 
-    if(!id){
-      document.getElementById("idle").style.display = "flex";
-    } else {
-      document.getElementById("idle").style.display = "none";
+function showVideo(id){
+  document.getElementById("idle").style.display="none";
+  document.getElementById("playerWrap").style.display="block";
 
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(tag);
+  const origin=location.origin;
 
-      window.onYouTubeIframeAPIReady = function(){
-        player = new YT.Player("playerWrap", {
-          videoId: id,
-          playerVars: {
-            autoplay: 1,
-            controls: 0,
-            rel: 0,
-            modestbranding: 1,
-            playsinline: 1,
-            iv_load_policy: 3,
-            fs: 0,
-            disablekb: 1
-          },
-          events: {
-            onReady: function(e){
-              try{
-                e.target.setPlaybackQuality("hd1080");
-                e.target.playVideo();
-              }catch(_){}
+  f.src=
+  "https://www.youtube-nocookie.com/embed/"+id+
+  "?autoplay=1"+
+  "&controls=0"+
+  "&rel=0"+
+  "&playsinline=1"+
+  "&iv_load_policy=3"+
+  "&modestbranding=1"+
+  "&loop=1&playlist="+id+
+  "&vq=hd1080"+
+  "&mute=0"+
+  "&origin="+encodeURIComponent(origin);
+}
 
-              // Force audio immediately, then keep forcing for 2 seconds.
-              forceAudio();
-              forceAudioBurst(2000);
-            },
-            onStateChange: function(e){
-              // When playback actually starts, force again (this is the key timing).
-              // YT.PlayerState.PLAYING === 1
-              if (e && e.data === 1){
-                forceAudio();
-                forceAudioBurst(1500);
-              }
-            }
-          }
-        });
-      };
-    }
-  </script>
+if(!v) showIdle();
+else showVideo(extractId(v));
+</script>
+
 </body>
 </html>
