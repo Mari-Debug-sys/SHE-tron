@@ -133,11 +133,11 @@ function showIdle(){
   idle.style.display = "flex";
 }
 
-function buildEmbed(id){
+function buildEmbed(id, muted){
   const origin = location.origin;
   return "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) +
     "?autoplay=1" +
-    "&mute=0" +                 // audio ON for main tron
+    "&mute=" + (muted ? "1" : "0") +
     "&controls=0" +
     "&rel=0" +
     "&playsinline=1" +
@@ -152,11 +152,9 @@ function showVideo(id){
   idle.style.display  = "none";
   stage.style.display = "block";
 
-  const url = buildEmbed(id);
-
-  // Both layers play the same video; fg preserves full frame; bg is blurred fill.
-  bg.src = url;
-  fg.src = url;
+  // Background is muted; foreground has audio.
+  bg.src = buildEmbed(id, true);
+  fg.src = buildEmbed(id, false);
 }
 
 if(!v) showIdle();
