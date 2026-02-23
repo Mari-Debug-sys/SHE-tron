@@ -13,43 +13,64 @@ html,body{
   background:#000;
   overflow:hidden;
 }
-
-/* root */
 #frame{
   position:fixed;
   inset:0;
   background:#000;
 }
 
-/* VIDEO AREA */
-#playerWrap{
+/* Stage is always full-screen */
+#stage{
   position:absolute;
   inset:0;
-  overflow:hidden; /* this is critical — it lets us crop the empty YT canvas */
+  display:none;
+  background:#000;
+  overflow:hidden;
+}
+
+/* BACKDROP: fills the screen, can be cropped/blurred */
+#bg{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
   background:#000;
 }
 
-/*
-  THE FIX:
-  We intentionally make the YouTube player wider than the screen
-  and center it. The unused cinematic canvas gets cropped, not
-  your actual video artwork.
-*/
-#playerWrap iframe{
+/* FOREGROUND: preserves full frame, never cropped */
+#fg{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  background:transparent;
+}
+
+/* Common iframe baseline */
+iframe{
+  border:0;
+  display:block;
+}
+
+/* Background video: cover + blur */
+#bg iframe{
   position:absolute !important;
   top:50% !important;
   left:50% !important;
-  transform:translate(-50%,-50%);
-
-  /* 16:9 -> overscan width */
-  width:177.78% !important;
+  transform:translate(-50%,-50%) scale(1.15);
+  width:177.78% !important;   /* cover for 16:9 container */
   height:100% !important;
-
-  border:0 !important;
-  display:block !important;
+  filter: blur(18px) brightness(0.75) saturate(1.05);
 }
 
-/* IDLE IMAGE */
+/* Foreground video: contain (no crop) */
+#fg iframe{
+  position:absolute !important;
+  top:0 !important;
+  left:0 !important;
+  width:100% !important;
+  height:100% !important;
+}
+
+/* IDLE */
 #idle{
   position:absolute;
   inset:0;
@@ -58,7 +79,6 @@ html,body{
   justify-content:center;
   background:#000;
 }
-
 #idle img{
   max-width:100%;
   max-height:100%;
@@ -70,69 +90,77 @@ html,body{
 </head>
 
 <body>
-
 <div id="frame">
-  <div id="playerWrap">
-    <iframe id="player"
-      allow="autoplay; encrypted-media; fullscreen"
-      allowfullscreen></iframe>
+
+  <div id="stage">
+    <div id="bg"><iframe id="bgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>
+    <div id="fg"><iframe id="fgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>
   </div>
 
-  <div id="idle">
-    <img id="idleImg" alt="SHE Idle">
-  </div>
+  <div id="idle"><img id="idleImg" alt="SHE Idle"></div>
 </div>
 
 <script>
-const qs=new URLSearchParams(location.search);
-const v=qs.get("v");
+const qs = new URLSearchParams(location.search);
+const v  = (qs.get("v") || "").trim();
 
 function baseDir(){
-  return location.origin+location.pathname.replace(/[^\/]*$/,"");
+  return location.origin + location.pathname.replace(/[^\/]*$/, "");
 }
-
-const idleImg=document.getElementById("idleImg");
-idleImg.src=baseDir()+"idle.png?cb="+Date.now();
 
 function extractId(input){
   if(!input) return "";
-  let s=input.trim();
-  let m=s.match(/[?&]v=([^&]+)/); if(m) return m[1];
-  m=s.match(/youtu\.be\/([^?&]+)/); if(m) return m[1];
+  let s = input.trim();
+  let m = s.match(/[?&]v=([^&]+)/); if(m) return m[1];
+  m = s.match(/youtu\.be\/([^?&]+)/); if(m) return m[1];
+  m = s.match(/youtube\.com\/embed\/([^?&]+)/); if(m) return m[1];
   return s;
 }
 
-const f=document.getElementById("player");
+const idleImg = document.getElementById("idleImg");
+idleImg.src = baseDir() + "idle.png?cb=" + Date.now();
+
+const stage = document.getElementById("stage");
+const idle  = document.getElementById("idle");
+
+const bg = document.getElementById("bgPlayer");
+const fg = document.getElementById("fgPlayer");
 
 function showIdle(){
-  f.src="about:blank";
-  document.getElementById("playerWrap").style.display="none";
-  document.getElementById("idle").style.display="flex";
+  bg.src = "about:blank";
+  fg.src = "about:blank";
+  stage.style.display = "none";
+  idle.style.display = "flex";
+}
+
+function buildEmbed(id){
+  const origin = location.origin;
+  return "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) +
+    "?autoplay=1" +
+    "&mute=0" +                 // audio ON for main tron
+    "&controls=0" +
+    "&rel=0" +
+    "&playsinline=1" +
+    "&iv_load_policy=3" +
+    "&modestbranding=1" +
+    "&loop=1&playlist=" + encodeURIComponent(id) +
+    "&vq=hd1080" +
+    "&origin=" + encodeURIComponent(origin);
 }
 
 function showVideo(id){
-  document.getElementById("idle").style.display="none";
-  document.getElementById("playerWrap").style.display="block";
+  idle.style.display  = "none";
+  stage.style.display = "block";
 
-  const origin=location.origin;
+  const url = buildEmbed(id);
 
-  f.src=
-  "https://www.youtube-nocookie.com/embed/"+id+
-  "?autoplay=1"+
-  "&controls=0"+
-  "&rel=0"+
-  "&playsinline=1"+
-  "&iv_load_policy=3"+
-  "&modestbranding=1"+
-  "&loop=1&playlist="+id+
-  "&vq=hd1080"+
-  "&mute=0"+
-  "&origin="+encodeURIComponent(origin);
+  // Both layers play the same video; fg preserves full frame; bg is blurred fill.
+  bg.src = url;
+  fg.src = url;
 }
 
 if(!v) showIdle();
 else showVideo(extractId(v));
 </script>
-
 </body>
 </html>
