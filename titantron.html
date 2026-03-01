@@ -1,164 +1,48 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1">
-<title>SHE Tron</title>
-
-<style>
-html,body{
-  margin:0;
-  width:100%;
-  height:100%;
-  background:#000;
-  overflow:hidden;
-}
-#frame{
-  position:fixed;
-  inset:0;
-  background:#000;
-}
-
-/* Stage is always full-screen */
-#stage{
-  position:absolute;
-  inset:0;
-  display:none;
-  background:#000;
-  overflow:hidden;
-}
-
-/* BACKDROP: fills the screen, can be cropped/blurred */
-#bg{
-  position:absolute;
-  inset:0;
-  overflow:hidden;
-  background:#000;
-}
-
-/* FOREGROUND: preserves full frame, never cropped */
-#fg{
-  position:absolute;
-  inset:0;
-  overflow:hidden;
-  background:transparent;
-}
-
-/* Common iframe baseline */
-iframe{
-  border:0;
-  display:block;
-}
-
-/* Background video: cover + blur */
-#bg iframe{
-  position:absolute !important;
-  top:50% !important;
-  left:50% !important;
-  transform:translate(-50%,-50%) scale(1.15);
-  width:177.78% !important;   /* cover for 16:9 container */
-  height:100% !important;
-  filter: blur(18px) brightness(0.75) saturate(1.05);
-}
-
-/* Foreground video: contain (no crop) */
-#fg iframe{
-  position:absolute !important;
-  top:0 !important;
-  left:0 !important;
-  width:100% !important;
-  height:100% !important;
-}
-
-/* IDLE */
-#idle{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#000;
-}
-#idle img{
-  max-width:100%;
-  max-height:100%;
-  width:auto;
-  height:auto;
-  object-fit:contain;
-}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SHE Tron</title>
+  <style>
+    html, body { width:100%; height:100%; margin:0; background:#000; overflow:hidden; }
+    #root { width:100%; height:100%; background:#000; }
+    .idle {
+      width:100%; height:100%;
+      display:grid; place-items:center;
+      color: rgba(255,255,255,0.15);
+      font: 700 40px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      letter-spacing: 0.08em;
+      user-select:none;
+    }
+    iframe { width:100%; height:100%; border:0; display:block; background:#000; }
+  </style>
 </head>
-
 <body>
-<div id="frame">
+  <div id="root"></div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const idle = params.get("idle") === "1";
+    const vid  = params.get("v");
+    const root = document.getElementById("root");
 
-  <div id="stage">
-    <div id="bg"><iframe id="bgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>
-    <div id="fg"><iframe id="fgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>
-  </div>
+    // IDLE MODE: do NOT create a YouTube iframe at all.
+    if (idle || !vid) {
+      const d = document.createElement("div");
+      d.className = "idle";
+      d.textContent = "SHE TRON";
+      root.appendChild(d);
+    } else {
+      const src =
+        "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(vid) +
+        "?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1";
 
-  <div id="idle"><img id="idleImg" alt="SHE Idle"></div>
-</div>
-
-<script>
-const qs = new URLSearchParams(location.search);
-const v  = (qs.get("v") || "").trim();
-
-function baseDir(){
-  return location.origin + location.pathname.replace(/[^\/]*$/, "");
-}
-
-function extractId(input){
-  if(!input) return "";
-  let s = input.trim();
-  let m = s.match(/[?&]v=([^&]+)/); if(m) return m[1];
-  m = s.match(/youtu\.be\/([^?&]+)/); if(m) return m[1];
-  m = s.match(/youtube\.com\/embed\/([^?&]+)/); if(m) return m[1];
-  return s;
-}
-
-const idleImg = document.getElementById("idleImg");
-idleImg.src = baseDir() + "idle.png?cb=" + Date.now();
-
-const stage = document.getElementById("stage");
-const idle  = document.getElementById("idle");
-
-const bg = document.getElementById("bgPlayer");
-const fg = document.getElementById("fgPlayer");
-
-function showIdle(){
-  bg.src = "about:blank";
-  fg.src = "about:blank";
-  stage.style.display = "none";
-  idle.style.display = "flex";
-}
-
-function buildEmbed(id, muted){
-  const origin = location.origin;
-  return "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) +
-    "?autoplay=1" +
-    "&mute=" + (muted ? "1" : "0") +
-    "&controls=0" +
-    "&rel=0" +
-    "&playsinline=1" +
-    "&iv_load_policy=3" +
-    "&modestbranding=1" +
-    "&loop=1&playlist=" + encodeURIComponent(id) +
-    "&vq=hd1080" +
-    "&origin=" + encodeURIComponent(origin);
-}
-
-function showVideo(id){
-  idle.style.display  = "none";
-  stage.style.display = "block";
-
-  // Background is muted; foreground has audio.
-  bg.src = buildEmbed(id, true);
-  fg.src = buildEmbed(id, false);
-}
-
-if(!v) showIdle();
-else showVideo(extractId(v));
-</script>
+      const f = document.createElement("iframe");
+      f.src = src;
+      f.allow = "autoplay; encrypted-media";
+      f.referrerPolicy = "no-referrer";
+      root.appendChild(f);
+    }
+  </script>
 </body>
 </html>
