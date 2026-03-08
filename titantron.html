@@ -56,7 +56,7 @@ iframe{
   top:50% !important;
   left:50% !important;
   transform:translate(-50%,-50%) scale(1.15);
-  width:177.78% !important;   /* cover for 16:9 container */
+  width:177.78% !important;
   height:100% !important;
   filter: blur(18px) brightness(0.75) saturate(1.05);
 }
@@ -93,8 +93,12 @@ iframe{
 <div id="frame">
 
   <div id="stage">
-    <div id="bg"><iframe id="bgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>
-    <div id="fg"><iframe id="fgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>
+    <div id="bg">
+      <iframe id="bgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+    </div>
+    <div id="fg">
+      <iframe id="fgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+    </div>
   </div>
 
   <div id="idle"><img id="idleImg" alt="SHE Idle"></div>
@@ -102,7 +106,8 @@ iframe{
 
 <script>
 const qs = new URLSearchParams(location.search);
-const v  = (qs.get("v") || "").trim();
+const v = (qs.get("v") || "").trim();
+const isIdle = qs.has("idle");
 
 function baseDir(){
   return location.origin + location.pathname.replace(/[^\/]*$/, "");
@@ -111,9 +116,16 @@ function baseDir(){
 function extractId(input){
   if(!input) return "";
   let s = input.trim();
-  let m = s.match(/[?&]v=([^&]+)/); if(m) return m[1];
-  m = s.match(/youtu\.be\/([^?&]+)/); if(m) return m[1];
-  m = s.match(/youtube\.com\/embed\/([^?&]+)/); if(m) return m[1];
+
+  let m = s.match(/[?&]v=([^&]+)/);
+  if(m) return m[1];
+
+  m = s.match(/youtu\.be\/([^?&]+)/);
+  if(m) return m[1];
+
+  m = s.match(/youtube\.com\/embed\/([^?&]+)/);
+  if(m) return m[1];
+
   return s;
 }
 
@@ -143,21 +155,23 @@ function buildEmbed(id, muted){
     "&playsinline=1" +
     "&iv_load_policy=3" +
     "&modestbranding=1" +
-    "&loop=1&playlist=" + encodeURIComponent(id) +
+    "&loop=1" +
+    "&playlist=" + encodeURIComponent(id) +
     "&vq=hd1080" +
+    "&enablejsapi=0" +
     "&origin=" + encodeURIComponent(origin);
 }
 
 function showVideo(id){
-  idle.style.display  = "none";
+  idle.style.display = "none";
   stage.style.display = "block";
 
-  // Background is muted; foreground has audio.
+  /* background muted, foreground WITH audio */
   bg.src = buildEmbed(id, true);
   fg.src = buildEmbed(id, false);
 }
 
-if(!v) showIdle();
+if(isIdle || !v) showIdle();
 else showVideo(extractId(v));
 </script>
 </body>
