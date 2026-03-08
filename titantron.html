@@ -18,6 +18,8 @@ html,body{
   inset:0;
   background:#000;
 }
+
+/* Stage is always full-screen */
 #stage{
   position:absolute;
   inset:0;
@@ -25,21 +27,50 @@ html,body{
   background:#000;
   overflow:hidden;
 }
-#playerWrap{
+
+/* BACKDROP: fills the screen, can be cropped/blurred */
+#bg{
   position:absolute;
   inset:0;
   overflow:hidden;
   background:#000;
 }
-#playerWrap iframe{
+
+/* FOREGROUND: preserves full frame, never cropped */
+#fg{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  background:transparent;
+}
+
+/* Common iframe baseline */
+iframe{
+  border:0;
+  display:block;
+}
+
+/* Background video: cover + blur */
+#bg iframe{
+  position:absolute !important;
+  top:50% !important;
+  left:50% !important;
+  transform:translate(-50%,-50%) scale(1.15);
+  width:177.78% !important;   /* cover for 16:9 container */
+  height:100% !important;
+  filter: blur(18px) brightness(0.75) saturate(1.05);
+}
+
+/* Foreground video: contain (no crop) */
+#fg iframe{
   position:absolute !important;
   top:0 !important;
   left:0 !important;
   width:100% !important;
   height:100% !important;
-  border:0;
-  display:block;
 }
+
+/* IDLE */
 #idle{
   position:absolute;
   inset:0;
@@ -60,18 +91,18 @@ html,body{
 
 <body>
 <div id="frame">
+
   <div id="stage">
-    <div id="playerWrap">
-      <iframe id="player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-    </div>
+    <div id="bg"><iframe id="bgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>
+    <div id="fg"><iframe id="fgPlayer" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>
   </div>
+
   <div id="idle"><img id="idleImg" alt="SHE Idle"></div>
 </div>
 
 <script>
 const qs = new URLSearchParams(location.search);
-const v = (qs.get("v") || "").trim();
-const isIdle = qs.has("idle");
+const v  = (qs.get("v") || "").trim();
 
 function baseDir(){
   return location.origin + location.pathname.replace(/[^\/]*$/, "");
@@ -80,12 +111,9 @@ function baseDir(){
 function extractId(input){
   if(!input) return "";
   let s = input.trim();
-  let m = s.match(/[?&]v=([^&]+)/);
-  if(m) return m[1];
-  m = s.match(/youtu\.be\/([^?&]+)/);
-  if(m) return m[1];
-  m = s.match(/youtube\.com\/embed\/([^?&]+)/);
-  if(m) return m[1];
+  let m = s.match(/[?&]v=([^&]+)/); if(m) return m[1];
+  m = s.match(/youtu\.be\/([^?&]+)/); if(m) return m[1];
+  m = s.match(/youtube\.com\/embed\/([^?&]+)/); if(m) return m[1];
   return s;
 }
 
@@ -94,38 +122,42 @@ idleImg.src = baseDir() + "idle.png?cb=" + Date.now();
 
 const stage = document.getElementById("stage");
 const idle  = document.getElementById("idle");
-const player = document.getElementById("player");
+
+const bg = document.getElementById("bgPlayer");
+const fg = document.getElementById("fgPlayer");
 
 function showIdle(){
-  player.src = "about:blank";
+  bg.src = "about:blank";
+  fg.src = "about:blank";
   stage.style.display = "none";
   idle.style.display = "flex";
 }
 
-function buildEmbed(id){
+function buildEmbed(id, muted){
   const origin = location.origin;
   return "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) +
     "?autoplay=1" +
-    "&mute=0" +
+    "&mute=" + (muted ? "1" : "0") +
     "&controls=0" +
     "&rel=0" +
     "&playsinline=1" +
     "&iv_load_policy=3" +
     "&modestbranding=1" +
-    "&loop=1" +
-    "&playlist=" + encodeURIComponent(id) +
+    "&loop=1&playlist=" + encodeURIComponent(id) +
     "&vq=hd1080" +
-    "&enablejsapi=0" +
     "&origin=" + encodeURIComponent(origin);
 }
 
 function showVideo(id){
-  idle.style.display = "none";
+  idle.style.display  = "none";
   stage.style.display = "block";
-  player.src = buildEmbed(id);
+
+  // Background is muted; foreground has audio.
+  bg.src = buildEmbed(id, true);
+  fg.src = buildEmbed(id, false);
 }
 
-if(isIdle || !v) showIdle();
+if(!v) showIdle();
 else showVideo(extractId(v));
 </script>
 </body>
